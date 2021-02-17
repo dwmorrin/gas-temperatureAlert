@@ -1,16 +1,47 @@
-/** Web App that can generate Gmail emails when hit */
-
-// request.body contains parsed JSON sent by client
-let request;
-
 function main(rawRequest) {
   try {
-    processRawRequest(rawRequest); // handles specifics of Apps Script request format
-    sendEmail(); // sends off an email
-    return response(); // HTTP response for client
+    const { error, reset, temperature } = processRawRequest(rawRequest);
+    if (error) {
+      // check hardware, turn off this system until manually restarted
+      logError({ message: "temperature sensor failure" });
+      const email = new Email(env.email);
+      email.subject = "Temperature alert: sensor failure";
+      email.body = `Sensor reported error code "${error}".  Check hardware.`;
+      email.send();
+      return response(); // tell client to stop sending messages
+    }
+    if (reset) {
+      const alarm = new TemperatureAlarm();
+      alarm.tripped = false;
+      return response(); // client is email, nothing to say
+    }
+    const db = new Database(env.sheet);
+    db.log([new Date(), temperature]); // record temperature readings
+    if (Number(temperature) > env.threshold) {
+      const alarm = new TemperatureAlarm();
+      if (alarm.tripped) return response(); // ask client to stop?
+      alarm.tripped = true;
+      const email = new Email(env.email);
+      email.body = `Temperature reading: ${temperature}, above limit.`;
+      email.appendLink(
+        getUrlWithQueryParameters({ reset: true }),
+        "Click to reset alert."
+      );
+      email.send();
+    }
+    return response(); // HTTP response for client, keep sending updates
   } catch (error) {
     if (error instanceof BadRequestException)
+      // assume not a good client
       return errorResponse(error.message);
+    else if (error instanceof BadSheetException) {
+      logError(error);
+      const email = new Email(env.email);
+      email.subject = "Temperature alert: could not access sheet";
+      email.body = error.message;
+      email.send();
+      return response(); // tell client to stop sending messages for now
+    }
     logError(error);
     return errorResponse("?");
   }
@@ -26,30 +57,33 @@ function doPost(rawRequest) {
   return main(rawRequest);
 }
 
-// checks for request data and either updates request or throws error
+/**
+ * @param {{[k: string]: string}} parameters
+ * @returns {string} URL of web app with added query parameters
+ */
+function getUrlWithQueryParameters(parameters) {
+  ScriptApp.getService().getUrl() +
+    "?" +
+    Object.entries(parameters).map((pairs) => pairs.join("=").join("&"));
+}
+
+// checks for request data and returns request body or throws error
 function processRawRequest(rawRequest) {
-  if (!rawRequest || !rawRequest.postData || !rawRequest.postData.contents)
+  if (!rawRequest) throw new BadRequestException("no request");
+  // GET reset=true will set tripped to false
+  // this parameter is embedded in a link sent via email when alarm is tripped
+  if (
+    rawRequest.parameter &&
+    rawRequest.parameter.reset &&
+    rawRequest.parameter.reset === "true"
+  ) {
+    return { reset: true };
+  }
+  if (!rawRequest.postData || !rawRequest.postData.contents)
     throw new BadRequestException("no data");
   const body = tryJsonParse(rawRequest.postData.contents);
   if (!body) throw new BadRequestException("could not parse data");
-  // you could also check for some body.secret or otherwise formatted data
-  // structure to prevent someone from just pinging your app and triggering
-  // an email
-  request = { body };
-}
-
-// on success...
-function sendEmail() {
-  const body = JSON.stringify(request.body);
-  const template = HtmlService.createTemplateFromFile("EmailTemplate");
-  template.body = body;
-
-  MailApp.sendEmail({
-    to: env.email.to,
-    subject: "Alert",
-    body,
-    htmlBody: template.evaluate().getContent(),
-  });
+  return body;
 }
 
 // Helper utilities
@@ -64,7 +98,7 @@ function tryJsonParse(s) {
 
 // on success, returns this to client
 function response() {
-  return new Response(request).textOutput;
+  return new Response("OK").textOutput;
 }
 
 // on error, returns this to client

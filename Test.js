@@ -1,3 +1,5 @@
 function test() {
-  console.log(main({ postData: { contents: JSON.stringify({ test: true }) } }));
+  console.log(
+    main({ postData: { contents: JSON.stringify({ temperature: 22.1 }) } })
+  );
 }

@@ -1,7 +1,10 @@
-# Email Alert
+# DHTXXD Alert
 
-Google Apps Script solution for getting emails from an internet-of-things
-device without storing Gmail credentials or token on the device.
+Web app to collect data from a DHTXXD sensor attached to a Raspberry Pi.
+
+Data is recorded in a Sheet.
+
+If the temperature reading is above a threshold, an email alert is sent.
 
 ## Usage
 
@@ -12,11 +15,17 @@ that should look like
 var env = {
   email: {
     to: "your_email@gmail.com",
+    subject: "Default subject line",
   },
+  sheet: {
+    id: "id of sheet",
+    name: "name of sheet to record data to",
+  },
+  threshold: 25, // degrees C, send alert email if exceeded
 };
 ```
 
 and any other private info and customization can be placed in there.
 
-Just store the URL on your device you want to be alerted with and have it
-make a HTTP POST request with a JSON body to the URL.
+See `reading.bash` for an example shell script for the Raspberry Pi to post the
+data to the web app.
