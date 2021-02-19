@@ -56,9 +56,9 @@ stdbuf --output=0 ./DHTXXD -g"$gpioPin" -i"$interval" \
       response="$(postToWebApp "{\"temperature\":$temperature,\"humidity\":$humidity}")"
     fi
 
-    # existence of error key means an error occured
+    # existence of error key means an error occured, jq will set error to "null" if missing
     error="$(jq -r .error <<<"$response")"
-    if [[ -n $error ]]; then
+    if [[ $error != null ]]; then
       logToFile "$errorLogFile" "$error"
     fi
 
