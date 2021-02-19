@@ -8,9 +8,9 @@ class Database {
   }
 
   /**
-   * @param {(string|number|Date)[]} dataArray
+   * @param {...string|number|Date} data
    */
-  log(dataArray) {
-    this.sheet.appendRow(dataArray);
+  log(...data) {
+    this.sheet.appendRow(data);
   }
 }

@@ -16,7 +16,7 @@ function main(rawRequest) {
       return response(); // client is email, nothing to say
     }
     const db = new Database(env.sheet);
-    db.log([new Date(), temperature]); // record temperature readings
+    db.log(new Date(), temperature); // record temperature readings
     if (Number(temperature) > env.threshold) {
       const alarm = new TemperatureAlarm();
       if (alarm.tripped) return response(); // ask client to stop?
