@@ -1,60 +1,76 @@
-function main(rawRequest) {
+// GET requests enter here
+function doGet(rawRequest) {
+  const { reset } = processGetRequest(rawRequest);
+  const alarm = new TemperatureAlarm();
+  if (reset) alarm.tripped = false;
+  return webPage(alarm);
+}
+
+// POST requests enter here
+function doPost(rawRequest) {
+  const alarm = new TemperatureAlarm();
   try {
-    const { error, reset, temperature } = processRawRequest(rawRequest);
+    const { error, temperature } = processPostRequest(rawRequest);
+
     if (error) {
-      // check hardware, turn off this system until manually restarted
-      logError({ message: "temperature sensor failure" });
-      const email = new Email(env.email);
-      email.subject = "Temperature alert: sensor failure";
-      email.body = `Sensor reported error code "${error}".  Check hardware.`;
-      email.send();
-      return response(); // tell client to stop sending messages
+      if (alarm.fault) {
+        // we're already aware there's an error
+        return response();
+      }
+      // new fault detected, may want an email or may want to catch several
+      // before sounding an alert, TBD
+      alarm.fault = error;
+      logError({ message: `temperature sensor failure code ${error}` });
+      return response();
+    } else {
+      // no fault detected... should we clear a previously set one?
+      if (alarm.fault) {
+        console.log("clearing previous alarm");
+        alarm.fault = false;
+      }
     }
-    if (reset) {
-      const alarm = new TemperatureAlarm();
-      alarm.tripped = false;
-      return response(); // client is email, nothing to say
+
+    log(new Date(), temperature);
+
+    // Check temperature and sound alarm if threshold exceeded
+    if (Number(temperature) > env.threshold.alarm) {
+      if (!alarm.tripped) {
+        alarm.tripped = true;
+        const email = new Email(env.email);
+        email.body = `Temperature reading: ${temperature}, above limit.`;
+        email.appendLink(
+          getUrlWithQueryParameters({ reset: true }),
+          "Click to reset alert."
+        );
+        email.send();
+      }
+    } else if (Number(temperature) <= env.threshold.reset) {
+      // room has sufficiently cooled to automatically reset the alarm
+      if (alarm.tripped) alarm.tripped = false;
     }
-    const db = new Database(env.sheet);
-    db.log(new Date(), temperature); // record temperature readings
-    if (Number(temperature) > env.threshold) {
-      const alarm = new TemperatureAlarm();
-      if (alarm.tripped) return response(); // ask client to stop?
-      alarm.tripped = true;
-      const email = new Email(env.email);
-      email.body = `Temperature reading: ${temperature}, above limit.`;
-      email.appendLink(
-        getUrlWithQueryParameters({ reset: true }),
-        "Click to reset alert."
-      );
-      email.send();
-    }
-    return response(); // HTTP response for client, keep sending updates
+    return response();
   } catch (error) {
     if (error instanceof BadRequestException)
       // assume not a good client
       return errorResponse(error.message);
     else if (error instanceof BadSheetException) {
       logError(error);
-      const email = new Email(env.email);
-      email.subject = "Temperature alert: could not access sheet";
-      email.body = error.message;
-      email.send();
-      return response(); // tell client to stop sending messages for now
+      if (alarm.fault != error.message) {
+        // we only need to get this notification once
+        alarm.fault = error.message;
+        const message = "could not access sheet";
+        const email = new Email(env.email);
+        email.subject = `Temperature alert: ${message}`;
+        email.body = error.message;
+        email.send();
+      }
+
+      return errorResponse(message);
     }
+
     logError(error);
     return errorResponse("?");
   }
-}
-
-// GET requests enter here
-function doGet(rawRequest) {
-  return main(rawRequest);
-}
-
-// POST requests enter here
-function doPost(rawRequest) {
-  return main(rawRequest);
 }
 
 /**
@@ -67,9 +83,7 @@ function getUrlWithQueryParameters(parameters) {
     Object.entries(parameters).map((pairs) => pairs.join("=").join("&"));
 }
 
-// checks for request data and returns request body or throws error
-function processRawRequest(rawRequest) {
-  if (!rawRequest) throw new BadRequestException("no request");
+function processGetRequest(rawRequest) {
   // GET reset=true will set tripped to false
   // this parameter is embedded in a link sent via email when alarm is tripped
   if (
@@ -79,6 +93,16 @@ function processRawRequest(rawRequest) {
   ) {
     return { reset: true };
   }
+  return {};
+}
+
+/**
+ * @param {{postData: {contents: {[k: string]: string}}}} rawRequest
+ * @returns {{[k: string]: string|number}
+ * @throws BadRequestException
+ */
+function processPostRequest(rawRequest) {
+  if (!rawRequest) throw new BadRequestException("no request");
   if (!rawRequest.postData || !rawRequest.postData.contents)
     throw new BadRequestException("no data");
   const body = tryJsonParse(rawRequest.postData.contents);
@@ -96,18 +120,39 @@ function tryJsonParse(s) {
   }
 }
 
-// on success, returns this to client
-function response() {
-  return new Response("OK").textOutput;
+/**
+ * @param {{[k: string]: string}?} body Object to be JSON serialized
+ * @returns {GoogleAppsScript.Content.TextOutput} JSON response
+ */
+function response(body = { status: "OK" }) {
+  return new Response(body).JSON;
 }
 
-// on error, returns this to client
+/**
+ * @param {string} message
+ * @returns {GoogleAppsScript.Content.TextOutput} JSON response
+ */
 function errorResponse(message) {
-  return new Response(message).textOutput;
+  return new Response({ error: true, message }).JSON;
 }
 
 // Just putting the default error into the console just displays the name
 // This tries to unpack the most useful info, falling back to less useful
 function logError(error) {
   console.log(error.stack || error.message || error.name);
+}
+
+/**
+ * @param {TemperatureAlarm} alarm
+ */
+function webPage(alarm) {
+  return new Response({ alarm }).webPage;
+}
+
+/**
+ * Appends a row of data to the database Sheet
+ * @param  {...string|number|Date} data
+ */
+function log(...data) {
+  new Database(env.sheet).log(...data);
 }

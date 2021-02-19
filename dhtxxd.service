@@ -1,0 +1,14 @@
+[Unit]
+Description=DHTXXD temperature sensor
+After=pigpiod.service
+
+[Service]
+ExecStart=/home/pi/readDht
+WorkingDirectory=/home/pi
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target

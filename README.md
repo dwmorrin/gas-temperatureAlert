@@ -21,7 +21,10 @@ var env = {
     id: "id of sheet",
     name: "name of sheet to record data to",
   },
-  threshold: 25, // degrees C, send alert email if exceeded
+  threshold: {
+    alarm: 25, // degrees C, send alert email if exceeded
+    reset: 22, // degrees C, automatically resets alarm if at or below
+  },
 };
 ```
 
@@ -29,3 +32,6 @@ and any other private info and customization can be placed in there.
 
 See `reading.bash` for an example shell script for the Raspberry Pi to post the
 data to the web app.
+
+See `dhtxxd.service` for an example systemd service file to run the temperature
+readings automatically on boot.

@@ -11,6 +11,13 @@ class Database {
    * @param {...string|number|Date} data
    */
   log(...data) {
-    this.sheet.appendRow(data);
+    this.sheet.appendRow(data.map(String));
+  }
+
+  /**
+   * @returns {string[][]} Temperature logs
+   */
+  get data() {
+    return this.sheet.getDataRange().getDisplayValues();
   }
 }

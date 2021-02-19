@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+  </head>
+  <body>
+    <h1>Under construction</h1>
+    <h2>To do list:</h2>
+    <ul>
+      <li>Chart of temperatures</li>
+      <li>Link to sheet</li>
+      <li>
+        Controls for temperature alarm (reset, threshold, email addresses)
+        <ul>
+          <li>Reset</li>
+          <li>Threshold</li>
+          <li>Faults</li>
+          <li>
+            Email
+            <ul>
+              <li>To</li>
+              <li>Subject</li>
+              <li>Body template</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>
+    <h2>State</h2>
+    <ul>
+      <li>
+        Alarm
+        <ul>
+          <li>
+            Tripped:
+            <?= alarm.tripped ?>
+          </li>
+          <li>
+            Fault:
+            <?= alarm.fault ?>
+          </li>
+          <li>
+            Alarm at
+            <?= env.threshold.alarm ?> </li>
+          </li>
+          <li>
+            Reset at
+            <?= env.threshold.reset ?> </li>
+          </li>
+        </ul>
+      </li>
+      <li>
+        Data
+        <ul>
+          <li>
+            # of readings:
+            <?= database.data.length ?>
+          </li>
+          <li>
+            Sheet ID:
+            <?= env.sheet.id ?>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </body>
+</html>
