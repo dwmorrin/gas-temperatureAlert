@@ -22,7 +22,7 @@ errorLogFile=dhtxxd.error.log
 
 # calculate max size based on choice of interval
 maxLines=$((60*60*24*31/interval)) # ~ number of readings in a month
-maxLogSize=$((maxLines * 14)) # estimate 14 bytes per reading
+maxLogSize=$((maxLines * 32)) # estimate 32 bytes per line (reading + timestamp)
 
 truncateLog() {
   # get actual number of lines
