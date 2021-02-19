@@ -1,0 +1,22 @@
+{
+  "name": "gas-temperaturealert",
+  "version": "1.0.0",
+  "description": "Google Apps Script web app for temperature sensor",
+  "main": "Code.js",
+  "scripts": {
+    "test": "echo \"no test defined\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dwmorrin/gas-temperatureAlert.git"
+  },
+  "author": "David Morrin",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dwmorrin/gas-temperatureAlert/issues"
+  },
+  "homepage": "https://github.com/dwmorrin/gas-temperatureAlert#readme",
+  "devDependencies": {
+    "@types/google-apps-script": "^1.0.25"
+  }
+}
