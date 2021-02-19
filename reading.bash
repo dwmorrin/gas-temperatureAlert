@@ -40,7 +40,7 @@ logToFile() {
 postToWebApp() {
   url="https://script.google.com/YourScriptURL/exec"
   # POST reading to URL, follow redirects, set header to JSON
-  curl -L -H "Content-Type: application/json" -d "$1" "$url"
+  curl -s -L -H "Content-Type: application/json" -d "$1" "$url"
 }
 
 # reading should have an error code, temperature in Celcius, and % humidity
