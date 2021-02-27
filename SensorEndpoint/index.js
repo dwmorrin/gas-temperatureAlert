@@ -1,9 +1,7 @@
 // GET requests enter here
-function doGet(rawRequest) {
-  const { reset } = processGetRequest(rawRequest);
-  const alarm = new TemperatureAlarm();
-  if (reset) alarm.tripped = false;
-  return webPage(alarm);
+// No GET functionality enabled
+function doGet() {
+  return errorResponse("nothing here");
 }
 
 // POST requests enter here
@@ -39,8 +37,8 @@ function doPost(rawRequest) {
         const email = new Email(env.email);
         email.body = `Temperature reading: ${temperature}, above limit.`;
         email.appendLink(
-          getUrlWithQueryParameters({ reset: true }),
-          "Click to reset alert."
+          env.app.url,
+          "For more info, click here to go to the web app."
         );
         email.send();
       }
@@ -74,29 +72,6 @@ function doPost(rawRequest) {
 }
 
 /**
- * @param {{[k: string]: string}} parameters
- * @returns {string} URL of web app with added query parameters
- */
-function getUrlWithQueryParameters(parameters) {
-  ScriptApp.getService().getUrl() +
-    "?" +
-    Object.entries(parameters).map((pairs) => pairs.join("=").join("&"));
-}
-
-function processGetRequest(rawRequest) {
-  // GET reset=true will set tripped to false
-  // this parameter is embedded in a link sent via email when alarm is tripped
-  if (
-    rawRequest.parameter &&
-    rawRequest.parameter.reset &&
-    rawRequest.parameter.reset === "true"
-  ) {
-    return { reset: true };
-  }
-  return {};
-}
-
-/**
  * @param {{postData: {contents: {[k: string]: string}}}} rawRequest
  * @returns {{[k: string]: string|number}
  * @throws BadRequestException
@@ -108,51 +83,4 @@ function processPostRequest(rawRequest) {
   const body = tryJsonParse(rawRequest.postData.contents);
   if (!body) throw new BadRequestException("could not parse data");
   return body;
-}
-
-// Helper utilities
-
-function tryJsonParse(s) {
-  try {
-    return JSON.parse(s);
-  } catch (e) {
-    return null;
-  }
-}
-
-/**
- * @param {{[k: string]: string}?} body Object to be JSON serialized
- * @returns {GoogleAppsScript.Content.TextOutput} JSON response
- */
-function response(body = { status: "OK" }) {
-  return new Response(body).JSON;
-}
-
-/**
- * @param {string} message
- * @returns {GoogleAppsScript.Content.TextOutput} JSON response
- */
-function errorResponse(message) {
-  return new Response({ error: true, message }).JSON;
-}
-
-// Just putting the default error into the console just displays the name
-// This tries to unpack the most useful info, falling back to less useful
-function logError(error) {
-  console.log(error.stack || error.message || error.name);
-}
-
-/**
- * @param {TemperatureAlarm} alarm
- */
-function webPage(alarm) {
-  return new Response({ alarm }).webPage;
-}
-
-/**
- * Appends a row of data to the database Sheet
- * @param  {...string|number|Date} data
- */
-function log(...data) {
-  new Database(env.sheet).log(...data);
 }
